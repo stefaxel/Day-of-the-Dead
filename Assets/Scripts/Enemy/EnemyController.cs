@@ -11,12 +11,23 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private Color overworldColour;
     [SerializeField] private Color underworldColour;
 
+    [Header("State Machine Settings")]
+    [SerializeField] private float detectionRadius;
+    [SerializeField] private LayerMask playerLayer;
+    [SerializeField] private float chaseDistance;
+    [SerializeField] private float catchDistance;
+    private EnemyState currentState;
+    private Transform playerTransform;
+    private Transform lastWaypoint;
+
     private Rigidbody2D rb2d;
     private SpriteRenderer sprite;
+
     private Vector2 direction;
+
     private int currentPoint = 0;
+
     private bool movingForward = true;
-    private bool isFrozenInUnderworld = false;
 
     private void OnEnable()
     {
@@ -35,6 +46,8 @@ public class EnemyController : MonoBehaviour
         sprite = GetComponent<SpriteRenderer>();
 
         sprite.color = overworldColour;
+
+        currentState = EnemyState.Patrol;
     }
 
     // Update is called once per frame
@@ -42,23 +55,98 @@ public class EnemyController : MonoBehaviour
     {
         if (waypoints == null || waypoints.Length == 0) return;
 
-        if (!isFrozenInUnderworld)
-        {
-            WaypointNavigation();
-        }
-        
+        FindTarget();
+
+        HandleStateBehaviour();
+
     }
 
     private void FixedUpdate()
     {
-        if (!isFrozenInUnderworld)
+        // Make sure that enemy can still move when going to the chase state
+        if (currentState == EnemyState.Patrol || currentState == EnemyState.Chase 
+            || currentState == EnemyState.Return)
         {
             rb2d.velocity = direction * speed;
         }
-        else if (isFrozenInUnderworld)
+        else if (currentState == EnemyState.Stop)
         {
             rb2d.velocity = Vector2.zero;
         }
+    }
+
+    private void HandleStateBehaviour()
+    {
+        switch (currentState)
+        {
+            case EnemyState.Patrol:
+                WaypointNavigation();
+                break;
+
+            case EnemyState.Chase:
+                float distanceFromWaypoint = Vector2.Distance(transform.position, lastWaypoint.position);
+
+                if(distanceFromWaypoint <= chaseDistance)
+                {
+                    ChasePlayer();
+                }
+                else
+                {
+                    currentState = EnemyState.Return;
+                }
+                break;
+
+            case EnemyState.Return:
+                ReturnToWaypoint();
+                break;
+
+        }
+    }
+
+    private void FindTarget()
+    {
+        // Using the a layer mask to find the collider and transform of the target
+        Collider2D playerCollider = Physics2D.OverlapCircle(transform.position, detectionRadius, playerLayer);
+
+        if(playerCollider != null && currentState == EnemyState.Patrol)
+        {
+            Transform player = playerCollider.transform;
+            
+            if(player != null)
+            {
+                lastWaypoint = waypoints[currentPoint];
+                playerTransform = player;
+                currentState = EnemyState.Chase;
+            }
+        }
+    }
+
+    private void ChasePlayer()
+    {
+        float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position);
+
+        if(distanceToPlayer <= detectionRadius)
+        {
+            direction = (playerTransform.position - transform.position).normalized;
+        }
+
+        if(distanceToPlayer <= catchDistance)
+        {
+            direction = Vector2.zero;
+        }
+
+    }
+
+    private void ReturnToWaypoint()
+    {
+        float distanceFromWaypoint = Vector2.Distance(transform.position, lastWaypoint.position);
+
+        if (distanceFromWaypoint <= stopDistance)
+        {
+            currentState = EnemyState.Patrol;
+        }
+
+        direction = ((Vector2)lastWaypoint.position - (Vector2)transform.position).normalized;
     }
 
 
@@ -66,7 +154,7 @@ public class EnemyController : MonoBehaviour
     {
         float distance = Vector2.Distance(transform.position, waypoints[currentPoint].position);
 
-        if(distance <= stopDistance)
+        if (distance <= stopDistance)
         {
             AdvanceToNextWaypoint();
         }
@@ -78,11 +166,11 @@ public class EnemyController : MonoBehaviour
 
     private void AdvanceToNextWaypoint()
     {
-        if(currentPoint >= waypoints.Length - 1)
+        if (currentPoint >= waypoints.Length - 1)
         {
             movingForward = false;
         }
-        else if(currentPoint <= 0)
+        else if (currentPoint <= 0)
         {
             movingForward = true;
         }
@@ -102,14 +190,14 @@ public class EnemyController : MonoBehaviour
         if (changeWorld)
         {
             sprite.color = underworldColour;
-            isFrozenInUnderworld = true;
+            currentState = EnemyState.Stop;
 
             direction = Vector2.zero;
         }
         else
         {
             sprite.color = overworldColour;
-            isFrozenInUnderworld = false;
+            currentState = EnemyState.Patrol;
         }
     }
 }
