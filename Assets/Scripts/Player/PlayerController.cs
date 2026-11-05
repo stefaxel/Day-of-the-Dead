@@ -10,6 +10,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private Color overworldColour;
     [SerializeField] private Color underworldColour;
 
+    [Header("Health and Soul Settings")]
+    [SerializeField] private PlayerSoulTimer soulTimer;
+
     private Vector2 inputDirection;
     private Rigidbody2D rb2d;
     private SpriteRenderer sprite;
@@ -55,20 +58,15 @@ public class PlayerController : MonoBehaviour
     {
         if (context.performed)
         {
-            isUnderworld = !isUnderworld;
+            if (!isUnderworld && !soulTimer.CanShift)
+            {
+                Debug.Log("Ability on cooldown");
+                return;
+            }
 
-            if (isUnderworld)
-            {
-                Debug.Log("World will be shifted to the underworld");
-                sprite.color = underworldColour;
-                WorldEventManager.OnChangeWorld(isUnderworld);
-            }
-            else
-            {
-                Debug.Log("World will be shifted back to the overworld");
-                sprite.color = overworldColour;
-                WorldEventManager.OnChangeWorld(isUnderworld);
-            }
+            bool targetState = !isUnderworld;
+
+            WorldEventManager.OnChangeWorld(targetState);
         }
     }
 
