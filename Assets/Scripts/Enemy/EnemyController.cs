@@ -16,6 +16,7 @@ public class EnemyController : MonoBehaviour
     private Vector2 direction;
     private int currentPoint = 0;
     private bool movingForward = true;
+    private bool isFrozenInUnderworld = false;
 
     private void OnEnable()
     {
@@ -41,12 +42,23 @@ public class EnemyController : MonoBehaviour
     {
         if (waypoints == null || waypoints.Length == 0) return;
 
-        WaypointNavigation();
+        if (!isFrozenInUnderworld)
+        {
+            WaypointNavigation();
+        }
+        
     }
 
     private void FixedUpdate()
     {
-        rb2d.velocity = direction * speed;
+        if (!isFrozenInUnderworld)
+        {
+            rb2d.velocity = direction * speed;
+        }
+        else if (isFrozenInUnderworld)
+        {
+            rb2d.velocity = Vector2.zero;
+        }
     }
 
 
@@ -90,10 +102,14 @@ public class EnemyController : MonoBehaviour
         if (changeWorld)
         {
             sprite.color = underworldColour;
+            isFrozenInUnderworld = true;
+
+            direction = Vector2.zero;
         }
         else
         {
             sprite.color = overworldColour;
+            isFrozenInUnderworld = false;
         }
     }
 }

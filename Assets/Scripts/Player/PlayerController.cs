@@ -15,6 +15,16 @@ public class PlayerController : MonoBehaviour
     private SpriteRenderer sprite;
     private bool isUnderworld;
 
+    private void OnEnable()
+    {
+        WorldEventManager.ChangeWorld += OnWorldChange;
+    }
+
+    private void OnDisable()
+    {
+        WorldEventManager.ChangeWorld -= OnWorldChange;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -65,5 +75,11 @@ public class PlayerController : MonoBehaviour
     private void Movement()
     {
         rb2d.velocity = inputDirection * moveSpeed;
+    }
+
+    private void OnWorldChange(bool underworldActive)
+    {
+        isUnderworld = underworldActive;
+        sprite.color = isUnderworld ? underworldColour : overworldColour;
     }
 }
