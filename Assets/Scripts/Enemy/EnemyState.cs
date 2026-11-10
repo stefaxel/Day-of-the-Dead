@@ -7,5 +7,7 @@ public enum EnemyState
     Patrol,
     Chase,
     Return,
-    Stop
+    Stop,
+    UnderworldAttack,
+    OverworldAttack
 }

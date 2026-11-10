@@ -20,6 +20,12 @@ public class EnemyController : MonoBehaviour
     private Transform playerTransform;
     private Transform lastWaypoint;
 
+    [Header("Attack Settings")]
+    [SerializeField] private float attackRange;
+    [SerializeField] private int attackDamage;
+    [SerializeField] private float attackCooldown = 1.5f;
+    private float attackCooldownTimer;
+
     private Rigidbody2D rb2d;
     private SpriteRenderer sprite;
 
@@ -55,23 +61,41 @@ public class EnemyController : MonoBehaviour
     {
         if (waypoints == null || waypoints.Length == 0) return;
 
+        if (attackCooldownTimer > 0)
+        {
+            attackCooldownTimer -= Time.deltaTime;
+        }
+
         FindTarget();
 
         HandleStateBehaviour();
+
+        if (IsInAttackRange())
+        {
+            if(currentState == EnemyState.Patrol ||
+                currentState == EnemyState.Chase)
+            {
+                currentState = EnemyState.OverworldAttack;
+            }
+            else if(currentState == EnemyState.Stop)
+            {
+                currentState = EnemyState.UnderworldAttack;
+            }
+        }
 
     }
 
     private void FixedUpdate()
     {
         // Make sure that enemy can still move when going to the chase state
-        if (currentState == EnemyState.Patrol || currentState == EnemyState.Chase 
-            || currentState == EnemyState.Return)
+        if (currentState == EnemyState.Patrol || currentState == EnemyState.Chase
+        || currentState == EnemyState.Return || currentState == EnemyState.OverworldAttack)
         {
             rb2d.velocity = direction * speed;
         }
-        else if (currentState == EnemyState.Stop)
+        else if (currentState == EnemyState.Stop || currentState == EnemyState.UnderworldAttack)
         {
-            rb2d.velocity = Vector2.zero;
+            rb2d.velocity = Vector2.zero; // Frozen/Underworld enemy stays completely still
         }
     }
 
@@ -100,6 +124,14 @@ public class EnemyController : MonoBehaviour
                 ReturnToWaypoint();
                 break;
 
+            case EnemyState.UnderworldAttack:
+                Attack();
+                break;
+
+            case EnemyState.OverworldAttack:
+                Attack();
+                break;
+
         }
     }
 
@@ -123,18 +155,78 @@ public class EnemyController : MonoBehaviour
 
     private void ChasePlayer()
     {
-        float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position);
+        float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position); ;
 
-        if(distanceToPlayer <= detectionRadius)
+        if (distanceToPlayer <= detectionRadius)
         {
             direction = (playerTransform.position - transform.position).normalized;
         }
 
-        if(distanceToPlayer <= catchDistance)
+        if (distanceToPlayer <= catchDistance)
         {
             direction = Vector2.zero;
         }
 
+    }
+
+    private void Attack()
+    {
+        if(currentState == EnemyState.OverworldAttack)
+        {
+            float distanceToPlayer = Vector2.Distance(transform.position, playerTransform.position); ;
+
+            if (distanceToPlayer <= attackRange)
+            {
+                direction = (playerTransform.position - transform.position).normalized;
+            }
+
+            if (distanceToPlayer <= catchDistance)
+            {
+                direction = Vector2.zero;
+            }
+        }
+        else if(currentState == EnemyState.UnderworldAttack)
+        {
+            direction = Vector2.zero;
+        }
+
+        if(attackCooldownTimer <= 0)
+        {
+            DealDamageToPlayerInRange();
+            attackCooldownTimer = attackCooldown;
+        }
+    }
+
+    private void DealDamageToPlayerInRange()
+    {
+        Collider2D playerCollider = Physics2D.OverlapCircle(transform.position, attackRange, playerLayer);
+
+        if (playerCollider != null)
+        {
+            IHealth playerHealth = playerCollider.GetComponent<Health>();
+
+            if (playerHealth != null)
+            {
+                playerHealth.DealDamage(attackDamage);
+                Debug.Log($"Dealing: {attackDamage} points of damage");
+            }
+        }
+    }
+
+    private bool IsInAttackRange()
+    {
+        if (playerTransform == null) return false;
+
+        float distanceFromPlayer = Vector2.Distance(transform.position, playerTransform.position); ;
+
+        if(distanceFromPlayer <= attackRange)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     private void ReturnToWaypoint()
