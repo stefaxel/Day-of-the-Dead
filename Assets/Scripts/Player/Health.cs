@@ -19,6 +19,8 @@ public class Health : MonoBehaviour, IHealth
     {
         currentHealth -= damageDealt;
 
+        WorldEventManager.OnChangeHealthbarUI(currentHealth, maxHealth);
+
         if(currentHealth <= 0)
         {
             Die();
@@ -29,6 +31,7 @@ public class Health : MonoBehaviour, IHealth
     {
         currentHealth += addHealth;
         currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+        WorldEventManager.OnChangeHealthbarUI(currentHealth, maxHealth);
     }
 
     private void Die()

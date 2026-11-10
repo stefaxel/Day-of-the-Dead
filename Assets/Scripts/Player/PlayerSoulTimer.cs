@@ -41,9 +41,16 @@ public class PlayerSoulTimer : MonoBehaviour
         if (isRecharging)
         {
             currentCooldownTime -= Time.deltaTime;
+
+            float elapsedTime = cooldownDuration - currentCooldownTime;
+
+            WorldEventManager.OnChangeSoulTimerUI(elapsedTime, cooldownDuration);
+
             if(currentCooldownTime <= 0f)
             {
                 isRecharging = false;
+                currentSoulTime = maxSoulTime;
+                WorldEventManager.OnChangeSoulTimerUI(currentSoulTime, maxSoulTime);
                 Debug.Log("Soul Energy Fully Recharged");
             }
         }
@@ -90,6 +97,8 @@ public class PlayerSoulTimer : MonoBehaviour
         while(currentSoulTime > 0)
         {
             currentSoulTime -= Time.deltaTime;
+
+            WorldEventManager.OnChangeSoulTimerUI(currentSoulTime, maxSoulTime);
 
             yield return null;
         }
